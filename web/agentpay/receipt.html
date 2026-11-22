@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>履约回执 · Admit × Facetry · elidot</title>
+<meta name="description" content="授权之内 Agent 才能花钱：授权单 → 402 → 付款 → 交付 → 回执，9 种越权/重复/误付拦截。" />
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/static/elidot/tokens.css" />
+<link rel="stylesheet" href="/static/elidot/components.css" />
+<link rel="stylesheet" href="/static/vendor/phosphor/style.css" />
+<link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">跳到主要内容</a>
+<div class="mock-banner" role="note"><span class="mock-tag">MOCK</span>演示环境：支付走本地模拟的支付宝网关，没有真实资金，也不是支付宝官方页面</div>
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="/" aria-label="elidot 首页">
+      <span class="brand-mark" aria-hidden="true"></span><span>elidot</span>
+      <span class="brand-sub" aria-hidden="true">/ Admit × Facetry</span>
+    </a>
+    <nav class="toolbar" aria-label="页面导航">
+      <a class="btn btn-ghost btn-sm" href="/"><i class="ph ph-arrow-left" aria-hidden="true"></i>返回演示</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="section-tight">
+    <div class="container">
+      <p class="eyebrow">agentpay.receipt.v1</p>
+      <h1>履约回执</h1>
+      <p class="lede">这张回执由商户 RSA2 私钥签名，包含授权单原文、402 账单、交付内容摘要和这笔订单的审计记录。页面会用商户公钥当场校验。</p>
+      <div class="card mt-5" id="rc">
+        <div class="section-head">
+          <h2 class="mb-0" id="rc-title">加载中…</h2>
+          <div class="toolbar">
+            <span class="chip" id="rc-apass">—</span>
+            <span class="chip" id="rc-valid">—</span>
+          </div>
+        </div>
+        <dl class="kv" id="rc-kv"></dl>
+        <h3 class="mt-5">APASS · KYA 四层可信授权与履约哈希链</h3>
+        <div class="apass-grid" id="rc-apass-grid"></div>
+        <h3 class="mt-5">审计记录</h3>
+        <div id="rc-audit"></div>
+        <details class="mt-5"><summary>回执原文（JSON）</summary><pre class="json" id="rc-raw"></pre></details>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="/" aria-label="elidot 首页"><span class="brand-mark" aria-hidden="true"></span><span>elidot</span></a>
+        <p class="footer-note">Admit × Facetry 是 elidot 的产品。本页为参赛演示，支付为 MOCK。</p>
+      </div>
+      <ul class="footer-links">
+        <li><a href="/terms">服务条款</a></li>
+        <li><a href="/privacy">隐私政策</a></li>
+        <li><a href="/refund">退款政策</a></li>
+        <li><a href="mailto:support@elidot.com">support@elidot.com</a></li>
+      </ul>
+    </div>
+    <p class="footer-note">© <span id="year">2026</span> elidot</p>
+  </div>
+</footer>
+<script type="module">
+import { api, el, icon, timeline, year } from '/static/common.js';
+year();
+const tn = new URLSearchParams(location.search).get('trade_no') || '';
+const r = await api(`/api/receipts/${encodeURIComponent(tn)}`);
+if (!r.ok) {
+  document.getElementById('rc-title').textContent = '找不到这张回执';
+  document.getElementById('rc-kv').replaceChildren(el('p', { class: 'muted', text: '演示环境重置后旧回执会失效。请回到演示页重新采购。' }));
+} else {
+  const rc = r.data.receipt;
+  document.getElementById('rc-title').textContent = `¥${rc.amount} · ${rc.bill.goods_name}`;
+  const v = document.getElementById('rc-valid');
+  v.className = `chip ${r.data.signature_valid ? 'ok' : 'block'}`;
+  v.replaceChildren(icon(r.data.signature_valid ? 'seal-check' : 'x-circle'), r.data.signature_valid ? '商户签名有效（RSA2）' : '签名无效');
+  const ac = document.getElementById('rc-apass');
+  ac.className = `chip ${r.data.apass_valid ? 'ok' : 'block'}`;
+  ac.replaceChildren(icon(r.data.apass_valid ? 'shield-check' : 'warning'), r.data.apass_valid ? `APASS 四层链有效（${r.data.apass_verified_layers}/4）` : 'APASS 链无效');
+  const ag = document.getElementById('rc-apass-grid');
+  for (const l of (rc.apass_attestation?.layers || [])) {
+    ag.append(el('div', { class: `apass-step${r.data.apass_valid ? ' verified' : ''}` },
+      el('span', { class: 'l-tag', text: `LAYER 0${l.layer} · ${l.crypto}` }),
+      el('h3', { text: l.pillar }),
+      el('div', { class: 'hash-pill', text: `prev ${l.prev_hash.slice(0, 10)}… → hash ${l.hash.slice(0, 14)}…` })
+    ));
+  }
+  const kv = document.getElementById('rc-kv');
+  for (const [k, val] of [['支付宝交易号', rc.trade_no], ['商户订单号', rc.out_trade_no], ['商户', rc.merchant_id], ['资源', rc.bill.resource_id],
+    ['授权单', `${rc.mandate.mandate_id}（单笔 ¥${rc.mandate.max_amount_per_tx}，累计 ¥${rc.mandate.max_amount_total}）`], ['agent', rc.agent_keyid],
+    ['交付摘要 SHA-256', rc.delivery_sha256], ['履约确认', rc.fulfillment_confirmed ? '已回传（MOCK）' : '未回传'], ['环境', rc._mock ? 'MOCK（无真实资金）' : '沙箱']])
+    kv.append(el('dt', { text: k }), el('dd', { class: 'mono', text: val }));
+  document.getElementById('rc-audit').replaceChildren(timeline(rc.audit.map((a) => ({ kind: a.event.startsWith('fulfil') ? 'receipt' : a.event.startsWith('payment') ? 'pay' : a.event.startsWith('order') ? 'bill' : 'info',
+    title: `#${a.seq} ${a.event}`, data: { reason: `${a.actor} · hash ${a.hash.slice(0, 12)}…` } }))));
+  document.getElementById('rc-raw').textContent = JSON.stringify(rc, null, 2);
+}
+</script>
+</body>
+</html>

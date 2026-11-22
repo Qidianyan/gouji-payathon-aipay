@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>三单勾稽工作台 · 勾稽 · elidot</title>
+<meta name="description" content="勾稽：真实中国电子发票解析、合同流水三单勾稽、红冲差额计算与记账凭证生成。" />
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/static/elidot/tokens.css" />
+<link rel="stylesheet" href="/static/elidot/components.css" />
+<link rel="stylesheet" href="/static/vendor/phosphor/style.css" />
+<link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">跳到主要内容</a>
+<div class="mock-banner" role="note"><span class="mock-tag">MOCK</span>演示环境：收银台与支付宝网关均为本地模拟，没有真实资金</div>
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="/" aria-label="elidot 首页">
+      <span class="brand-mark" aria-hidden="true"></span><span>elidot</span>
+      <span class="brand-sub" aria-hidden="true">/ 勾稽</span>
+    </a>
+    <nav class="toolbar" aria-label="页面导航">
+      <a class="btn btn-ghost btn-sm" href="/">定价</a>
+      <a class="btn btn-ghost btn-sm" href="/app.html">工作台</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <section class="section-tight">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">工作区 demo-ws · 真票解析与三单勾稽</p>
+          <h1 class="mb-0">电子发票三单勾稽工作台</h1>
+        </div>
+        <div class="card" style="padding:16px 24px"><span class="small muted">剩余次数</span><div class="stat" id="bal">—</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h2>真票识别 · 合同流水勾稽 · 红冲测算</h2>
+          <form id="rec-form" class="stack">
+            <div class="field">
+              <label for="doc">选择真实业务样张（或展开下方上传自有 PDF / 票面图片）</label>
+              <select class="select" id="doc">
+                <option value="cloud-vat-normal">电子发票（普通发票） · 云服务器租用费 ¥2,000.00（三单完全相符）</option>
+                <option value="office-spec-overbill">增值税专用发票 · 办公设备采购 ¥1,130.00（超合同 ¥130 触发红冲）</option>
+                <option value="rail-ticket-deduct">铁路电子客票 · 上海虹桥—杭州东 ¥73.00（9% 进项计算抵扣）</option>
+                <option value="red-ink-credit-note">红字电子普通发票 · 技术服务退费冲销 -¥636.00（负数红冲票）</option>
+              </select>
+              <div class="toolbar mt-2">
+                <a class="btn btn-ghost btn-sm" id="dl-sample-pdf" href="/gouji/samples/cloud-vat-normal/pdf" download><i class="ph ph-file-pdf" aria-hidden="true"></i>下载该样张真 PDF</a>
+                <a class="btn btn-ghost btn-sm" id="dl-sample-png" href="/gouji/samples/cloud-vat-normal/png" download><i class="ph ph-image" aria-hidden="true"></i>下载该样张票面 PNG</a>
+              </div>
+            </div>
+
+            <details class="sub-details">
+              <summary>高级输入：上传真实 PDF/图片发票 · 纳税人资格 · 合同与流水三单勾稽参数</summary>
+              <div class="stack mt-4">
+                <div class="field mb-0">
+                  <label for="inv-file">上传电子发票原件（PDF 走本地确定性解析，PNG/JPG 走多模态视觉精识）</label>
+                  <input class="input" type="file" id="inv-file" accept=".pdf,.png,.jpg,.jpeg,.webp" />
+                </div>
+                <div class="field mb-0">
+                  <label for="taxpayer-type">账套纳税人身份</label>
+                  <select class="select" id="taxpayer-type">
+                    <option value="general">一般纳税人（专票/客票自动价税分离抵扣进项税）</option>
+                    <option value="small">小规模纳税人（价税合计全额计入成本费用）</option>
+                  </select>
+                </div>
+                <div class="field mb-0">
+                  <label for="inv-qr">国税局发票二维码或补充票面文本（可选）</label>
+                  <textarea class="textarea" id="inv-qr" rows="2" placeholder="例如：01,10,031002300111,83920174,1886.79,20261112,839201,7F2A 或直接粘贴票面文字"></textarea>
+                </div>
+                <div class="form-grid">
+                  <div class="field mb-0">
+                    <label for="contract-amt">关联合同约定总额（元，留空按样张合同）</label>
+                    <input class="input" type="text" id="contract-amt" placeholder="如 1000.00" />
+                  </div>
+                  <div class="field mb-0">
+                    <label for="paid-amt">银行/支付宝流水实付（元，留空按样张流水）</label>
+                    <input class="input" type="text" id="paid-amt" placeholder="如 1000.00" />
+                  </div>
+                </div>
+                <div class="field mb-0">
+                  <label for="red-amt">折让/退货申请红冲金额（元，可选）</label>
+                  <input class="input" type="text" id="red-amt" placeholder="如 130.00（自动反算不含税与进项税转出）" />
+                </div>
+              </div>
+            </details>
+
+            <button class="btn btn-primary" type="submit" id="btn-rec"><i class="ph ph-scan" aria-hidden="true"></i>识别真票并执行三单勾稽（扣 1 次）</button>
+          </form>
+          <div id="rec-out" class="mt-5" aria-live="polite"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2 class="mb-0">订单与按比例退款</h2><a class="btn btn-ghost btn-sm" href="/"><i class="ph ph-shopping-cart" aria-hidden="true"></i>买次数包</a></div>
+          <div class="table-wrap" id="orders"></div>
+          <h3 class="mt-5">防篡改哈希审计导出</h3>
+          <p class="small muted">每一笔购买、异步通知验签、票据勾稽扣次与原路退款均实时写入 SHA-256 哈希链。</p>
+          <div class="toolbar">
+            <a class="btn btn-secondary btn-sm" href="/audit/export?format=jsonl" download="gouji-audit.jsonl"><i class="ph ph-file-code" aria-hidden="true"></i>JSONL</a>
+            <a class="btn btn-secondary btn-sm" href="/audit/export?format=csv" download="gouji-audit.csv"><i class="ph ph-file-csv" aria-hidden="true"></i>CSV</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="/" aria-label="elidot 首页"><span class="brand-mark" aria-hidden="true"></span><span>elidot</span></a>
+        <p class="footer-note">勾稽 是上海奇点砚科技有限公司旗下 AI 财税生产力工具。</p>
+      </div>
+      <ul class="footer-links">
+        <li><a href="/terms">服务条款</a></li>
+        <li><a href="/privacy">隐私政策</a></li>
+        <li><a href="/refund">退款政策</a></li>
+        <li><a href="mailto:support@elidot.com">support@elidot.com</a></li>
+      </ul>
+    </div>
+    <p class="footer-note">© <span id="year">2026</span> elidot</p>
+  </div>
+</footer>
+<script type="module">
+import { api, el, icon, toast, year } from '/static/common.js';
+year();
+const ACCT = 'demo-ws';
+let seq = 0;
+
+const docSelect = document.getElementById('doc');
+docSelect.addEventListener('change', () => {
+  const sid = docSelect.value;
+  document.getElementById('dl-sample-pdf').href = `/gouji/samples/${sid}/pdf`;
+  document.getElementById('dl-sample-png').href = `/gouji/samples/${sid}/png`;
+});
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result || ''));
+    fr.onerror = () => reject(new Error('文件读取失败'));
+    fr.readAsDataURL(file);
+  });
+}
+
+function downloadKingdeeCsv(csvText, invNo) {
+  const blob = new Blob(['\uFEFF' + csvText], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `gouji-voucher-${invNo || 'export'}.csv`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function refresh() {
+  const b = (await api(`/billing/balance?account=${ACCT}`)).data;
+  document.getElementById('bal').textContent = b.balance;
+  const list = (await api(`/billing/orders?account=${ACCT}`)).data.orders;
+  const box = document.getElementById('orders');
+  if (!list.length) { box.replaceChildren(el('p', { class: 'empty-note', text: '还没有订单。' })); return; }
+  const CN = { PAID: '已支付', PENDING: '待支付', CLOSED: '已关闭', REFUNDED: '已退款' };
+  const t = el('table', { class: 'table' }, el('thead', {}, el('tr', {}, el('th', { text: '订单' }), el('th', { text: '金额' }), el('th', { text: '状态' }), el('th', { text: '操作' }))));
+  const tb = el('tbody');
+  for (const o of list) {
+    const btn = o.status === 'PAID' ? el('button', { class: 'btn btn-secondary btn-sm', type: 'button', 'data-refund': o.out_trade_no, onclick: () => refund(o.out_trade_no) }, icon('arrow-u-up-left'), '退未用次数') : '—';
+    tb.append(el('tr', { 'data-order': o.out_trade_no }, el('td', { class: 'mono small', text: o.out_trade_no }), el('td', { text: `¥${o.amount}` }), el('td', { text: CN[o.status] || o.status }), el('td', {}, btn)));
+  }
+  t.append(tb); box.replaceChildren(t);
+}
+
+async function refund(out) {
+  const r = await api(`/billing/orders/${out}/refund`, { method: 'POST', body: { account: ACCT } });
+  if (r.ok) toast(`已退 ${r.data.refunded_credits} 次，退款 ¥${r.data.refund_amount} 原路退回`);
+  else toast(`退款失败：${r.data?.code}`);
+  document.getElementById('rec-out').replaceChildren(r.ok
+    ? el('div', { class: 'callout callout-success', 'data-result': 'refund' }, el('strong', { text: '退款完成：' }), `退回 ${r.data.refunded_credits} 次未用次数，¥${r.data.refund_amount} 已原路退回支付账户。`)
+    : el('div', { class: 'callout callout-danger', text: `退款失败：${r.data?.code}` }));
+  refresh();
+}
+
+const STATUS_CN = {
+  MATCHED: ['ok', 'check-circle', '三单完全勾稽相符'],
+  NEEDS_RED_INK: ['block', 'warning-octagon', '票超合同 · 已生成红冲差额方案'],
+  PARTIAL_SETTLED: ['wait', 'clock', '票款部分结算 · 差额已挂往来科目'],
+  REVIEW_REQUIRED: ['wait', 'magnifying-glass', '存在勾稽差异 · 请复核'],
+};
+
+function renderVoucherResult(data) {
+  const inv = data.invoice;
+  const v = data.voucher;
+  const rec = data.reconciliation;
+  const red = data.red_ink_adjustment;
+  const [cls, ic, label] = STATUS_CN[rec.status] || ['', 'info', rec.status];
+
+  const entryTable = el('table', { class: 'table mt-4' },
+    el('thead', {}, el('tr', {}, el('th', { text: '借/贷' }), el('th', { text: '会计科目' }), el('th', { text: '金额（CNY）' }))),
+    el('tbody', {}, ...v.entries.map((e) => el('tr', {},
+      el('td', { text: e.direction }),
+      el('td', { text: e.account }),
+      el('td', { class: 'mono', text: `¥${e.amount}` })
+    ))),
+    el('tfoot', {}, el('tr', {},
+      el('td', { text: '试算平衡' }),
+      el('td', { text: v.balanced ? '借贷必相等（校验通过）' : '借贷不平' }),
+      el('td', { class: 'mono', text: `借 ¥${v.debit_total} = 贷 ¥${v.credit_total}` })
+    ))
+  );
+
+  const checksUl = el('ul', { class: 'reconcile-list' },
+    ...rec.checks.map((c) => el('li', { class: c.passed ? 'ok' : 'warn' },
+      el('strong', { text: `${c.passed ? '✓ ' : '! '}${c.check}：` }), c.detail))
+  );
+
+  const redBox = red?.required
+    ? el('div', { class: 'callout callout-warning mt-4' },
+        el('strong', { text: '红字冲销差额计算：' }),
+        `${red.note}（税率 ${red.tax_rate}）`)
+    : null;
+
+  return el('div', { class: 'callout callout-success voucher-out', 'data-result': 'voucher' },
+    el('div', { class: 'toolbar' },
+      el('span', { class: `chip ${cls}` }, icon(ic), label),
+      el('span', { class: 'chip', text: `解析源：${inv.extraction_source}` })
+    ),
+    el('p', { class: 'mt-4 mb-2' },
+      el('strong', { text: `${inv.invoice_type} · 票号 ${inv.invoice_number}` }),
+      ` · 开票日 ${inv.issue_date} · 价税合计 ¥${inv.total_amount}（不含税 ¥${inv.net_amount} + 税额 ¥${inv.tax_amount}，税率 ${inv.tax_rate}）`
+    ),
+    el('p', { class: 'small muted mb-2', text: `销方：${inv.seller_name}（${inv.seller_tax_id || '—'}） ｜ 购方税号：${inv.buyer_tax_id || '—'}` }),
+    checksUl,
+    redBox,
+    el('div', { class: 'table-wrap' }, entryTable),
+    el('div', { class: 'toolbar mt-4' },
+      el('button', { class: 'btn btn-secondary btn-sm', type: 'button', onclick: () => downloadKingdeeCsv(data.kingdee_csv, inv.invoice_number) },
+        icon('download-simple'), '导出金蝶/用友标准凭证 CSV')
+    )
+  );
+}
+
+document.getElementById('rec-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const btn = document.getElementById('btn-rec');
+  btn.disabled = true;
+  try {
+    const body = {
+      account: ACCT,
+      request_id: `ui-${Date.now()}-${seq++}`,
+      sample_id: docSelect.value,
+      doc_name: docSelect.options[docSelect.selectedIndex]?.text || '',
+      taxpayer_type: document.getElementById('taxpayer-type').value,
+    };
+    const rawQrOrText = document.getElementById('inv-qr').value.trim();
+    if (rawQrOrText.startsWith('01,')) body.qr_code = rawQrOrText;
+    else if (rawQrOrText) body.invoice_text = rawQrOrText;
+
+    const fileInput = document.getElementById('inv-file');
+    if (fileInput.files && fileInput.files[0]) {
+      body.file_b64 = await readFileAsDataUrl(fileInput.files[0]);
+      body.filename = fileInput.files[0].name;
+    }
+    const cAmt = document.getElementById('contract-amt').value.trim();
+    if (cAmt) body.contract = { contract_no: 'CUSTOM-HT', contract_amount: cAmt };
+    const pAmt = document.getElementById('paid-amt').value.trim();
+    if (pAmt) body.bank_flow = { flow_id: 'CUSTOM-FLOW', paid_amount: pAmt };
+    const rAmt = document.getElementById('red-amt').value.trim();
+    if (rAmt) body.red_ink_amount = rAmt;
+
+    const r = await api('/gouji/recognize', { method: 'POST', body });
+    const out = document.getElementById('rec-out');
+    if (r.status === 402) {
+      out.replaceChildren(el('div', { class: 'callout callout-warning', 'data-result': 'quota' },
+        el('strong', { text: '次数用完了。' }), ' ',
+        el('a', { href: '/', text: '去买次数包' }), ' 或 ',
+        el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: async () => {
+          await api('/billing/trial', { method: 'POST', body: { account: ACCT } }); refresh(); toast('试用次数已到账');
+        } }, '领取 20 次免费试用')));
+    } else if (r.ok) {
+      out.replaceChildren(renderVoucherResult(r.data));
+    } else {
+      out.replaceChildren(el('div', { class: 'callout callout-danger', text: `解析未通过（未扣次数）：${r.data?.message || r.data?.code}` }));
+    }
+    refresh();
+  } finally {
+    btn.disabled = false;
+  }
+});
+refresh();
+</script>
+</body>
+</html>

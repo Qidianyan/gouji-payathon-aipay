@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>结账 · 勾稽 · elidot</title>
+<meta name="description" content="勾稽：AI 识别票据生成记账凭证，按次数包付费。" />
+<meta name="robots" content="noindex" />
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/static/elidot/tokens.css" />
+<link rel="stylesheet" href="/static/elidot/components.css" />
+<link rel="stylesheet" href="/static/vendor/phosphor/style.css" />
+<link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">跳到主要内容</a>
+<div class="mock-banner" role="note"><span class="mock-tag">MOCK</span>演示环境：收银台与支付宝网关均为本地模拟，没有真实资金</div>
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="/" aria-label="elidot 首页">
+      <span class="brand-mark" aria-hidden="true"></span><span>elidot</span>
+      <span class="brand-sub" aria-hidden="true">/ 勾稽</span>
+    </a>
+    <nav class="toolbar" aria-label="页面导航">
+      <a class="btn btn-ghost btn-sm" href="/">定价</a>
+      <a class="btn btn-ghost btn-sm" href="/app.html">工作台</a>
+    </nav>
+  </div>
+</header>
+<main id="main" class="checkout-page">
+  <div class="container">
+    <h1>结账</h1>
+    <p class="muted small" id="co-sub">完成付款后立即开通次数。价格以 CNY 结算。</p>
+    <div class="checkout-grid">
+      <form class="checkout-form" id="co-form" novalidate>
+        <section aria-labelledby="contact-h">
+          <h2 id="contact-h">工作区</h2>
+          <div class="field">
+            <label for="account">工作区账号（次数会充到这里）</label>
+            <input class="input" id="account" name="account" type="text" autocomplete="off" required value="demo-ws" />
+            <span class="hint">演示默认工作区 demo-ws。</span>
+          </div>
+        </section>
+        <section aria-labelledby="pay-h">
+          <h2 id="pay-h">支付方式</h2>
+          <div class="pay-method-slot" id="payment-mount">
+            <strong><i class="ph ph-wallet" aria-hidden="true"></i> 支付宝 · 电脑网站支付</strong><br />
+            点「去支付」后跳转到支付宝收银台付款，本页面不接触任何账户或卡数据。<br />
+            <span class="small">演示环境：跳转的是本地 MOCK 收银台，页面顶部有 MOCK 标识。</span>
+          </div>
+        </section>
+        <div class="checkbox-row">
+          <input id="consent" name="consent" type="checkbox" required />
+          <label for="consent">我已阅读并同意 <a href="/terms">服务条款</a>、<a href="/privacy">隐私政策</a> 和 <a href="/refund">退款政策</a>。</label>
+        </div>
+        <p class="error-text" id="co-err" role="alert" hidden></p>
+        <p class="mt-5"><button class="btn btn-primary btn-lg btn-block" type="submit" id="btn-pay">去支付</button></p>
+        <p class="trust-line">只有收到支付宝的已验签通知（或主动查询确认）后才开通次数；付款失败可以重新下单，不会重复扣款。</p>
+      </form>
+      <aside class="summary card" aria-labelledby="summary-h">
+        <h2 id="summary-h">订单摘要</h2>
+        <div class="order-line"><span id="sum-name">勾稽 · 次数包</span><span class="price" id="sum-price">—</span></div>
+        <div class="order-line"><span>次数</span><span id="sum-credits">—</span></div>
+        <div class="order-line"><span>有效期</span><span>365 天</span></div>
+        <div class="order-line"><span>税费</span><span class="price">含 6% 增值税（可开电子普票）</span></div>
+        <div class="summary-total"><span>合计</span><span class="price price-lg" id="sum-total">—</span></div>
+        <p class="trust-line">一次性购买，不自动续费。</p>
+      </aside>
+    </div>
+  </div>
+</main>
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="/" aria-label="elidot 首页"><span class="brand-mark" aria-hidden="true"></span><span>elidot</span></a>
+        <p class="footer-note">勾稽 是 elidot 的产品。本页为参赛演示，支付为 MOCK。</p>
+      </div>
+      <ul class="footer-links">
+        <li><a href="/terms">服务条款</a></li>
+        <li><a href="/privacy">隐私政策</a></li>
+        <li><a href="/refund">退款政策</a></li>
+        <li><a href="mailto:support@elidot.com">support@elidot.com</a></li>
+      </ul>
+    </div>
+    <p class="footer-note">© <span id="year">2026</span> elidot</p>
+  </div>
+</footer>
+<script type="module">
+import { api, year } from '/static/common.js';
+year();
+const id = new URLSearchParams(location.search).get('pack') || 'p100';
+const p = (await api('/billing/packs')).data;
+const allPacks = [...p.packs, ...(p.starter_pack ? [p.starter_pack] : [])];
+const pk = allPacks.find((x) => x.id === id) || p.packs[0];
+document.getElementById('sum-name').textContent = `勾稽 · ${pk.name}`;
+for (const k of ['sum-price', 'sum-total']) document.getElementById(k).textContent = `CNY ${pk.price}`;
+document.getElementById('sum-credits').textContent = `${pk.credits} 次`;
+document.getElementById('btn-pay').textContent = `去支付 CNY ${pk.price}`;
+document.getElementById('co-form').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const err = document.getElementById('co-err');
+  if (!document.getElementById('consent').checked) { err.hidden = false; err.textContent = '请先勾选同意服务条款、隐私政策和退款政策。'; document.getElementById('consent').focus(); return; }
+  const acct = document.getElementById('account').value.trim();
+  if (!acct) { err.hidden = false; err.textContent = '请填写工作区账号。'; return; }
+  err.hidden = true;
+  const r = await api('/billing/checkout', { method: 'POST', body: { account: acct, pack_id: pk.id } });
+  if (!r.ok) { err.hidden = false; err.textContent = `下单失败：${r.data?.code || r.status}，可以重试。`; return; }
+  location.href = r.data.pay_url;
+});
+</script>
+</body>
+</html>

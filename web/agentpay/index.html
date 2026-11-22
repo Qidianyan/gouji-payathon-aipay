@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admit × Facetry · Agent Pay 演示 · elidot</title>
+<meta name="description" content="授权之内 Agent 才能花钱：授权单 → 402 → 付款 → 交付 → 回执，9 种越权/重复/误付拦截。" />
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/static/elidot/tokens.css" />
+<link rel="stylesheet" href="/static/elidot/components.css" />
+<link rel="stylesheet" href="/static/vendor/phosphor/style.css" />
+<link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">跳到主要内容</a>
+<div class="mock-banner" role="note"><span class="mock-tag">MOCK</span>演示环境：支付走本地模拟的支付宝网关，没有真实资金，也不是支付宝官方页面</div>
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="/" aria-label="elidot 首页">
+      <span class="brand-mark" aria-hidden="true"></span><span>elidot</span>
+      <span class="brand-sub" aria-hidden="true">/ Admit × Facetry</span>
+    </a>
+    <nav class="toolbar" aria-label="页面导航">
+      <a class="btn btn-ghost btn-sm" href="#run">Agent 采购</a>
+      <a class="btn btn-ghost btn-sm" href="#apass-sec">APASS 四层存证</a>
+      <a class="btn btn-ghost btn-sm" href="#scenarios">9 种拦截</a>
+      <a class="btn btn-ghost btn-sm" href="#audit">审计</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="section-tight">
+    <div class="container">
+      <p class="eyebrow">支付宝 AI 付 · Agent Pay × APASS (Know Your Agent)</p>
+      <h1 class="display">授权之内，Agent 才能花钱</h1>
+      <p class="lede">对齐支付宝 <code>alipay-aipay</code> 与 APASS 四层可信架构：人类预算 Ed25519 签名 → 商户商品锁定与 HTTP 402 加签 → 支付凭据核验签发 → 履约回执 SHA-256 哈希链，越权立停、偏题重签、全程密码学留痕。</p>
+    </div>
+  </section>
+
+  <section class="section-tight" id="run" aria-labelledby="run-h">
+    <div class="container layout-2">
+      <article class="voucher" aria-labelledby="mandate-h" id="mandate">
+        <div class="seal" aria-hidden="true"><i class="ph ph-signature"></i>用户<br />已签</div>
+        <p class="eyebrow mb-0">授权单 · admit.mandate.v1</p>
+        <h2 id="mandate-h">采购授权</h2>
+        <p class="meta" id="m-id">加载中…</p>
+        <dl class="kv" id="m-kv"></dl>
+        <div class="mt-4">
+          <div class="order-line"><span>已用额度</span><span id="m-used">—</span></div>
+          <div class="meter" aria-hidden="true"><span id="m-meter" style="width:0"></span></div>
+        </div>
+        <div class="toolbar mt-5">
+          <button class="btn btn-secondary btn-sm" id="btn-reset" type="button"><i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>重置演示</button>
+          <a class="btn btn-ghost btn-sm" href="/.well-known/agent-service.json" target="_blank" rel="noopener"><i class="ph ph-magnifying-glass" aria-hidden="true"></i>服务发现文档</a>
+        </div>
+      </article>
+
+      <div class="card" aria-labelledby="run-h">
+        <div class="section-head">
+          <h2 id="run-h">让 Agent 去买</h2>
+          <span class="chip" id="planner-chip"><i class="ph ph-robot" aria-hidden="true"></i><span>—</span></span>
+        </div>
+        <form id="run-form" class="stack">
+          <div class="field">
+            <label for="task">用一句话告诉 Agent 要什么</label>
+            <textarea class="textarea" id="task" name="task" rows="2"></textarea>
+            <span class="hint">试试：「检查商品目录结账字段」（会触发意图偏移确认）、「买一张 50 元礼品卡」（会被拦截）。</span>
+          </div>
+          <div class="toolbar">
+            <button class="btn btn-primary" type="submit" id="btn-run"><i class="ph ph-play" aria-hidden="true"></i>开始采购</button>
+            <label class="switch"><input type="checkbox" id="use-llm" checked /> 用 LLM 选品（不可用时自动规则降级）</label>
+          </div>
+        </form>
+        <div id="run-result" aria-live="polite"><p class="empty-note">时间线会显示：发现服务 → 选品 → 402 账单 → 钱包付款 → 带凭证取货 → 交付 → 回执。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-tight" id="apass-sec" aria-labelledby="apass-h">
+    <div class="container">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow mb-0">Alipay APASS · Know Your Agent (KYA) · apass.kya.v1</p>
+            <h2 id="apass-h">四层可信授权与存证哈希链</h2>
+          </div>
+          <span class="chip" id="apass-status"><i class="ph ph-shield-check" aria-hidden="true"></i><span>待发起交易锚定</span></span>
+        </div>
+        <div class="apass-grid" id="apass-grid"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-tight" id="receipt-sec" aria-labelledby="rc-h" hidden>
+    <div class="container">
+      <div class="card">
+        <div class="section-head">
+          <h2 id="rc-h"><i class="ph ph-seal-check" aria-hidden="true"></i> 履约回执</h2>
+          <div class="toolbar">
+            <span class="chip" id="rc-apass">—</span>
+            <span class="chip" id="rc-valid">—</span>
+          </div>
+        </div>
+        <div class="grid-2">
+          <dl class="kv" id="rc-kv"></dl>
+          <div class="stack">
+            <label class="small muted" for="share-link">分享回执链接（任何人可打开并校验商户签名）</label>
+            <div class="link-box">
+              <input class="input" id="share-link" readonly />
+              <button class="btn btn-secondary btn-sm" id="btn-copy" type="button"><i class="ph ph-copy" aria-hidden="true"></i>复制</button>
+              <a class="btn btn-secondary btn-sm" id="btn-open" href="#" target="_blank" rel="noopener"><i class="ph ph-arrow-square-out" aria-hidden="true"></i>打开</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-tight" id="scenarios" aria-labelledby="sc-h">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">越权 · 重复 · 误付</p>
+          <h2 id="sc-h">9 种拦截，一键演示</h2>
+        </div>
+        <div class="toolbar">
+          <span class="chip" id="sc-summary">未运行</span>
+          <button class="btn btn-primary" id="btn-all" type="button"><i class="ph ph-lightning" aria-hidden="true"></i>一键演示全部</button>
+        </div>
+      </div>
+      <div class="scenario-grid" id="sc-grid"></div>
+    </div>
+  </section>
+
+  <section class="section-tight" id="audit" aria-labelledby="au-h">
+    <div class="container">
+      <div class="card">
+        <div class="section-head">
+          <div>
+            <h2 id="au-h"><i class="ph ph-link-simple" aria-hidden="true"></i> 审计导出</h2>
+            <p class="muted small mb-0">追加写入的哈希链：每条记录包含上一条的 hash，任何篡改都能被独立校验出来。</p>
+          </div>
+          <span class="chip" id="au-status">—</span>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-secondary" id="btn-verify" type="button"><i class="ph ph-shield-check" aria-hidden="true"></i>校验哈希链</button>
+          <a class="btn btn-secondary" id="dl-jsonl" href="/api/audit/export?format=jsonl" download="agentpay-audit.jsonl"><i class="ph ph-file-code" aria-hidden="true"></i>导出 JSONL</a>
+          <a class="btn btn-secondary" id="dl-csv" href="/api/audit/export?format=csv" download="agentpay-audit.csv"><i class="ph ph-file-csv" aria-hidden="true"></i>导出 CSV</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<dialog class="confirm" id="confirm-dlg" aria-labelledby="cf-h">
+  <h2 id="cf-h"><i class="ph ph-signature" aria-hidden="true"></i> 需要你确认</h2>
+  <p id="cf-text" class="muted"></p>
+  <div class="callout callout-warning mt-4"><strong>为什么停下来：</strong><span id="cf-codes"></span></div>
+  <div class="toolbar mt-5">
+    <button class="btn btn-primary" id="cf-yes" type="button"><i class="ph ph-check" aria-hidden="true"></i>签名同意，继续购买</button>
+    <button class="btn btn-secondary" id="cf-no" type="button"><i class="ph ph-x" aria-hidden="true"></i>拒绝</button>
+  </div>
+  <p class="small muted mt-4 mb-0">演示中由本地演示用户密钥签名（Ed25519），真实环境由用户在自己的设备上签。</p>
+</dialog>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="/" aria-label="elidot 首页"><span class="brand-mark" aria-hidden="true"></span><span>elidot</span></a>
+        <p class="footer-note">Admit × Facetry 是 elidot 的产品。本页为参赛演示，支付为 MOCK。</p>
+      </div>
+      <ul class="footer-links">
+        <li><a href="/terms">服务条款</a></li>
+        <li><a href="/privacy">隐私政策</a></li>
+        <li><a href="/refund">退款政策</a></li>
+        <li><a href="mailto:support@elidot.com">support@elidot.com</a></li>
+      </ul>
+    </div>
+    <p class="footer-note">© <span id="year">2026</span> elidot</p>
+  </div>
+</footer>
+<script type="module" src="/static/agentpay.js"></script>
+</body>
+</html>

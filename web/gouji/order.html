@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>订单结果 · 勾稽 · elidot</title>
+<meta name="description" content="勾稽：AI 识别票据生成记账凭证，按次数包付费。" />
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="/static/elidot/tokens.css" />
+<link rel="stylesheet" href="/static/elidot/components.css" />
+<link rel="stylesheet" href="/static/vendor/phosphor/style.css" />
+<link rel="stylesheet" href="/static/app.css" />
+</head>
+<body>
+<a class="skip-link" href="#main">跳到主要内容</a>
+<div class="mock-banner" role="note"><span class="mock-tag">MOCK</span>演示环境：收银台与支付宝网关均为本地模拟，没有真实资金</div>
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="/" aria-label="elidot 首页">
+      <span class="brand-mark" aria-hidden="true"></span><span>elidot</span>
+      <span class="brand-sub" aria-hidden="true">/ 勾稽</span>
+    </a>
+    <nav class="toolbar" aria-label="页面导航">
+      <a class="btn btn-ghost btn-sm" href="/">定价</a>
+      <a class="btn btn-ghost btn-sm" href="/app.html">工作台</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+  <section class="section">
+    <div class="container" style="max-width:720px">
+      <p class="eyebrow">订单</p>
+      <h1 id="o-title">确认支付结果…</h1>
+      <p class="lede" id="o-lede">以服务器收到的支付宝异步通知（已验签）为准，同步跳转只做展示。</p>
+      <div class="card mt-5">
+        <dl class="kv" id="o-kv"></dl>
+        <div class="toolbar mt-5">
+          <a class="btn btn-primary" href="/app.html" id="btn-go"><i class="ph ph-scan" aria-hidden="true"></i>去识别票据</a>
+          <a class="btn btn-secondary" href="/"><i class="ph ph-tag" aria-hidden="true"></i>返回定价</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="/" aria-label="elidot 首页"><span class="brand-mark" aria-hidden="true"></span><span>elidot</span></a>
+        <p class="footer-note">勾稽 是 elidot 的产品。本页为参赛演示，支付为 MOCK。</p>
+      </div>
+      <ul class="footer-links">
+        <li><a href="/terms">服务条款</a></li>
+        <li><a href="/privacy">隐私政策</a></li>
+        <li><a href="/refund">退款政策</a></li>
+        <li><a href="mailto:support@elidot.com">support@elidot.com</a></li>
+      </ul>
+    </div>
+    <p class="footer-note">© <span id="year">2026</span> elidot</p>
+  </div>
+</footer>
+<script type="module">
+import { api, el, year } from '/static/common.js';
+year();
+const out = new URLSearchParams(location.search).get('order') || '';
+const CN = { PAID: '已支付，次数已到账', PENDING: '待支付', CLOSED: '已关闭（超时未付）', REFUNDED: '已退款' };
+async function poll(n = 0) {
+  const r = await api(`/billing/orders/${encodeURIComponent(out)}`);
+  if (!r.ok) { document.getElementById('o-title').textContent = '找不到这笔订单'; return; }
+  const o = r.data;
+  document.getElementById('o-title').textContent = CN[o.status] || o.status;
+  document.body.dataset.status = o.status;
+  const kv = document.getElementById('o-kv'); kv.replaceChildren();
+  for (const [k, v] of [['商户订单号', o.out_trade_no], ['支付宝交易号', o.trade_no || '—'], ['金额', `¥${o.amount}`], ['次数', `${o.credits} 次`]])
+    kv.append(el('dt', { text: k }), el('dd', { class: 'mono', text: v }));
+  if (o.status === 'PENDING' && n < 10) setTimeout(() => poll(n + 1), 800);
+}
+poll();
+</script>
+</body>
+</html>

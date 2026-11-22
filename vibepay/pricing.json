@@ -1,0 +1,14 @@
+{
+  "_note": "勾稽次数包定价，依据见 materials/勾稽定价.md。改价只改本文件。金额单位：元。次数包走支付宝网页应用收款（page.pay / wap.pay）；单次按量 per_call_price 若走 402 Machine Pay 须 ≤50 元。",
+  "currency": "CNY",
+  "trial_credits": 20,
+  "validity_days": 365,
+  "per_call_price": "0.30",
+  "max_402_single_payment": "50.00",
+  "starter_pack": {"id": "p5", "name": "5 次极速体验包", "credits": 5, "price": "0.99"},
+  "packs": [
+    {"id": "p100", "name": "100 次包", "credits": 100, "price": "25.00"},
+    {"id": "p500", "name": "500 次包", "credits": 500, "price": "99.00"},
+    {"id": "p2000", "name": "2000 次包", "credits": 2000, "price": "299.00"}
+  ]
+}
